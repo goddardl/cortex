@@ -53,6 +53,7 @@ SConsignFile()
 ieCoreMajorVersion=8
 ieCoreMinorVersion=0
 ieCorePatchVersion=0
+ieCoreVersionSuffix="a13"	# used for alpha/beta releases. Example: "a1", "b2", etc.
 
 ###########################################################################################
 # Command line options
@@ -1001,8 +1002,11 @@ if env["BUILD_CACHEDIR"] != "" :
 env["IECORE_MAJOR_VERSION"] = ieCoreMajorVersion
 env["IECORE_MINOR_VERSION"] = ieCoreMinorVersion
 env["IECORE_PATCH_VERSION"] = ieCorePatchVersion
+env["IECORE_VERSION_SUFFIX"] = ieCoreVersionSuffix
 env["IECORE_MAJORMINOR_VERSION"] = "${IECORE_MAJOR_VERSION}.${IECORE_MINOR_VERSION}"
 env["IECORE_MAJORMINORPATCH_VERSION"] = "${IECORE_MAJOR_VERSION}.${IECORE_MINOR_VERSION}.${IECORE_PATCH_VERSION}"
+if ieCoreVersionSuffix :
+	env["IECORE_MAJORMINORPATCH_VERSION"] += "-${IECORE_VERSION_SUFFIX}"
 
 env.Append(
 	CPPFLAGS = [
@@ -1642,7 +1646,7 @@ if doConfigure :
 		riPythonSources = sorted( glob.glob( "src/IECoreRI/bindings/*.cpp" ) )
 		riPythonScripts = glob.glob( "python/IECoreRI/*.py" )
 	
-		if c.CheckHeader( "pointcloud.h" ) :
+		if c.CheckCXXHeader( "pointcloud.h" ) :
 			
 			riEnv.Append( CPPFLAGS = "-DIECORERI_WITH_PTC" )
 			riPythonModuleEnv.Append( CPPFLAGS = "-DIECORERI_WITH_PTC" )
@@ -2297,7 +2301,11 @@ if doConfigure :
 				else :
 					nukeSources.remove( "src/IECoreNuke/DisplayIop.cpp" )							
 					nukeNodeNames.remove( "ieDisplay" )
-					
+				
+				if nukeMajorVersion < 7 :
+					nukeSources.remove( "src/IECoreNuke/SceneCacheReader.cpp" )
+					nukeHeaders.remove( "include/IECoreNuke/SceneCacheReader.h" )
+
 				# nuke library
 
 				nukeLibrary = nukeEnv.SharedLibrary( "lib/" + os.path.basename( nukeEnv.subst( "$INSTALL_NUKELIB_NAME" ) ), nukeSources )
