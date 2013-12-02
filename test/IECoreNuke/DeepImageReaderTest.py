@@ -1,6 +1,6 @@
 ##########################################################################
 #
-#  Copyright (c) 2008-2011, Image Engine Design Inc. All rights reserved.
+#  Copyright (c) 2013, Image Engine Design Inc. All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions are
@@ -32,32 +32,67 @@
 #
 ##########################################################################
 
+import math
 import unittest
+import IECoreNuke
 import IECore
-import sys
+import nuke
+import os
 
-sys.path.append( "test/IECoreNuke" )
+class DeepImageReaderTest( IECoreNuke.TestCase ) :
 
-from KnobAccessorsTest import *
-from FnAxisTest import *
-from DeepImageReaderTest import *
-#from LensDistortTest import *
-from StringUtilTest import *
-from KnobConvertersTest import *
-from ParameterisedHolderTest import ParameterisedHolderTest
-from ObjectKnobTest import ObjectKnobTest
-from OpHolderTest import OpHolderTest
-if IECore.withPNG() :
-	from PNGReaderTest import PNGReaderTest
+	def __outputPaths( self ) :	
+		return { "dtex" : "test/IECoreNuke/nukeDeepReadDtex.exr", "shw" : "test/IECoreNuke/nukeDeepReadShw.exr" }
+	
+	def __inputPaths( self ) :	
+		return { "dtex" : "test/IECoreRI/data/dtex/coneAndSphere.dtex", "shw" : "test/IECoreRI/data/shw/coneAndSphere.shw" }
 
-unittest.TestProgram(
-	testRunner = unittest.TextTestRunner(
-		stream = IECore.CompoundStream(
-			[
-				sys.stderr,
-				open( "test/IECoreNuke/resultsPython.txt", "w" )
-			]
-		),
-		verbosity = 2
-	)
-)
+	def testReadSHW( self ) :
+		import IECoreRI
+
+		self.tearDown();	
+		
+		r = nuke.createNode("DeepRead")
+		r["file"].setText( self.__inputPaths()["dtex"] )
+
+		i = nuke.createNode("DeepToImage")
+		i.setInput( 0, r )
+
+		w = nuke.createNode("Write")
+		w.setInput( 0, i )
+		w["channels"].fromScript("A")
+		w["file"].setText( self.__outputPaths()["dtex"] )
+
+		d = nuke.createNode("ieDeepImageReader")
+		d["file"].setText( self.__inputPaths()["shw"] )
+		
+		i2 = nuke.createNode("DeepToImage")
+		i2.setInput( 0, d )
+		
+		w2 = nuke.createNode("Write")
+		w2.setInput( 0, i2 )
+		w2["channels"].fromScript("A")
+		w2["file"].setText( self.__outputPaths()["shw"] )
+
+		nuke.execute( w, 1, 1 )
+		nuke.execute( w2, 1, 1 )
+		
+		img1 = IECore.Reader.create( self.__outputPaths["dtex"] ).read()
+		img2 = IECore.Reader.create( self.__outputPaths["shw"] ).read()
+		
+		imageDiffOp = IECore.ImageDiffOp()
+		res = imageDiffOp(
+			imageA = img1,
+			imageB = img2,
+		)
+		self.assertFalse( res.value )	
+							
+	def tearDown( self ) :
+		paths = self.__outputPaths()
+		for key in paths.keys() :
+			if os.path.exists( paths[key] ) :
+				os.remove( paths[key] )
+
+if __name__ == "__main__":
+    unittest.main()
+
