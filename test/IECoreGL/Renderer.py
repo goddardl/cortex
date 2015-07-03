@@ -247,6 +247,31 @@ class TestRenderer( unittest.TestCase ) :
 
 		self.assertEqual( len( handler.messages ), 0 )
 
+	def testIeDisplay( self ) :
+		
+		p = {
+			"displayHost" : "localhost",
+			"displayPort" : "1559",
+			"remoteDisplayType" : "GafferImage::GafferDisplayDriver",
+			"driverType" : "ClientDisplayDriver"
+		}
+		
+		r = Renderer()
+		r.setOption( "gl:mode", StringData( "immediate" ) )
+		r.setOption( "gl:searchPath:shader", StringData( os.path.dirname( __file__ ) + "/shaders" ) )
+		r.display( "ieDisplay", "ieDisplay", "rgba", p )
+		r.worldBegin()
+		
+		r.shader( "surface", "rgbColor", { "red" : FloatData( 1 ), "green" : FloatData( 0 ), "blue" : FloatData( 0 ) } )
+
+		r.concatTransform( M44f.createTranslated( V3f( 0, 0, -5 ) ) )
+
+		r.concatTransform( M44f.createTranslated( V3f( -1, 0, 0 ) ) )
+		r.geometry( "sphere", {}, {} )
+
+		r.worldEnd()
+		
+
 	def testStackBug( self ) :
 
 		# This should produce a yellow sphere in between two red spheres. It does in the DeferredRenderer but
